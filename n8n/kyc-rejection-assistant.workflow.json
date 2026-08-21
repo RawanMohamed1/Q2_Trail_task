@@ -1,0 +1,121 @@
+{
+  "name": "KYC Rejection Assistant - Approval Flow",
+  "meta": {
+    "description": "Manual form trigger for a rejected KYC case, drafts an internal note + customer message via the KYC Rejection Assistant agent, sends it to a supporter in Slack for approval/edit, then DMs the final text to the customer."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "KYC Rejection Assistant",
+        "formDescription": "Submit a failed KYC verification to draft a customer rejection message.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Customer Name", "requiredField": true },
+            { "fieldLabel": "Rejection Reason", "fieldType": "textarea", "placeholder": "e.g. ID expired March 2024", "requiredField": true },
+            { "fieldLabel": "Customer Slack Username", "placeholder": "e.g. jane.doe (without @)", "requiredField": true }
+          ]
+        },
+        "options": { "buttonLabel": "Generate Draft" }
+      },
+      "id": "86efe6f8-4dd9-4f3d-8981-86dcd9de98de",
+      "name": "KYC Rejection Input",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [-112, 16],
+      "webhookId": "36a7c5b4-469b-4a38-bb4d-f594e679fd2a"
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_YOUR_AGENT_ID",
+          "cachedResultName": "KYC Rejection Assistant"
+        },
+        "message": "=Rejection reason: {{ $json[\"Rejection Reason\"] }}\nCustomer name: {{ $json[\"Customer Name\"] }}",
+        "useStructuredOutput": true,
+        "jsonSchemaExample": "{\"internal_note\":\"ID expired Mar 2024 - customer needs to re-upload a currently valid government ID.\",\"customer_message\":\"Hi Ahmed, thanks for your patience! We noticed the ID you uploaded expired in March 2024, so we weren't able to verify it. Could you upload a currently valid government ID when you get a chance?\"}",
+        "advanced": {}
+      },
+      "id": "585cbc67-37d5-41d0-8b60-1d7a79d6e707",
+      "name": "Draft KYC Message",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3,
+      "position": [64, 10.5]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "user": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SUPPORTER_SLACK_USER_ID",
+          "cachedResultName": "REPLACE_WITH_SUPPORTER_NAME"
+        },
+        "message": "=A new KYC rejection message is ready for review.\nCustomer: {{ $(\"KYC Rejection Input\").item.json[\"Customer Name\"] }}",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldType": "html",
+              "elementName": "internal_note_display",
+              "html": "<p><strong>Internal note:</strong> {{ $json.structuredOutput.internal_note }}</p>"
+            },
+            {
+              "fieldLabel": "Customer Message (edit if needed, then submit)",
+              "fieldType": "textarea",
+              "fieldName": "customer_message",
+              "defaultValue": "={{ $json.structuredOutput.customer_message }}",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2d84d5bc-2907-4a40-afa5-0aba2dd3a21e",
+      "name": "Get Supporter Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [480, 0],
+      "webhookId": "a53b3137-07cb-4f1a-87c7-dce7bd43d432",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "mode": "username",
+          "value": "={{ $('KYC Rejection Input').item.json['Customer Slack Username'] }}"
+        },
+        "text": "={{ $json.data.customer_message }}",
+        "otherOptions": {}
+      },
+      "id": "210d53bf-5534-41de-a2b0-2f315a4c4791",
+      "name": "Send to Customer",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [672, 0],
+      "webhookId": "7978cfee-2d8b-4482-baff-177ef1be3fe6",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "KYC Rejection Input": { "main": [[{ "node": "Draft KYC Message", "type": "main", "index": 0 }]] },
+    "Draft KYC Message": { "main": [[{ "node": "Get Supporter Approval", "type": "main", "index": 0 }]] },
+    "Get Supporter Approval": { "main": [[{ "node": "Send to Customer", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
