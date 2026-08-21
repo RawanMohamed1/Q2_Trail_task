@@ -49,8 +49,7 @@ own during setup below.
 - A Slack app/bot installed in your workspace with:
   - Bot token scopes: `chat:write`, `im:write`, `users:read`, `users:read.email`
   - **Interactivity & Shortcuts** turned on, with the Request URL pointed at your n8n instance
-    (n8n shows you the exact URL once you add the Slack node — see
-    [n8n's Slack human-in-the-loop docs](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/approvals/)).
+    (n8n shows you the exact URL once you add the Slack node.
 
 ### 2. Add your credentials in n8n
 
